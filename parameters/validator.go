@@ -40,6 +40,10 @@ func ValidateParameters(parameters *BenchmarkParameters) error {
 		return err
 	}
 
+	if strings.TrimSpace(parameters.URL) == "" {
+		return fmt.Errorf("url cannot be empty")
+	}
+
 	return nil
 }
 

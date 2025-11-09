@@ -51,11 +51,6 @@ func (p *BenchmarkParameters) ToHeyArgs() []string {
 		args = append(args, "-T", p.Hey.ContentType)
 	}
 
-	// Output format
-	if p.Hey.Output == "csv" {
-		args = append(args, "-o", "csv")
-	}
-
 	// Flags booleanas
 	if p.Hey.HTTP2 {
 		args = append(args, "-h2")
@@ -71,6 +66,15 @@ func (p *BenchmarkParameters) ToHeyArgs() []string {
 
 	if p.Hey.DisableRedirects {
 		args = append(args, "-disable-redirects")
+	}
+
+	// Output format - Prefer JSON for structured parsing
+	switch p.Hey.Output {
+	case "json", "":
+		args = append(args, "json")
+	case "csv":
+		args = append(args, "-o", "csv")
+	default:
 	}
 
 	// URL final

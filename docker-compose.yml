@@ -1,0 +1,20 @@
+services:
+  serverless-exporter:
+    build:
+      context: ./metrics
+    container_name: serverless_exporter
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /proc:/host_proc:ro  
+      - ~/.kube/config:/root/.kube/config:ro  
+    pid: "host"
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
