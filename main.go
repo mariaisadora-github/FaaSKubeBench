@@ -6,12 +6,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/mariaisadora-github/FaaSKubeBench/heyexec"
 	"github.com/mariaisadora-github/FaaSKubeBench/metrics"
 	"github.com/mariaisadora-github/FaaSKubeBench/parameters"
-	"github.com/mariaisadora-github/FaaSKubeBench/report"
 )
 
 // Constantes para o exporter
@@ -31,15 +31,17 @@ func main() {
 	// 2. Carregar Parâmetros
 	params, err := parameters.LoadParametersFromFile(configPath)
 	if err != nil {
-		log.Fatalf("Failed to load parameters from %s: %v", configPath, err)
+		log.Fatalf("Erro ao carregar os parâmetros do arquivo %s: %v", configPath, err)
 	}
 
-	fmt.Printf("Configuration loaded successfully! %+v\n", params)
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println("   INICIANDO BENCHMARK FAASKUBEBENCH")
+	fmt.Println(strings.Repeat("=", 80))
 
 	// --- Orquestração do Benchmark ---
 
 	// 3. Iniciar Exporter de Métricas (Docker Compose)
-	fmt.Println("\n--- Iniciando Exporter de Métricas ---")
+	fmt.Println(" Iniciando Exporter de Métricas...")
 
 	// Define o tempo de início do benchmark ANTES de iniciar o exporter
 	benchmarkStartTime := time.Now().UTC()
@@ -57,9 +59,11 @@ func main() {
 		log.Fatalf("Erro ao iniciar o exporter de métricas (Verifique se o Docker e o plugin 'compose' estão instalados e o docker-compose.yaml está na pasta): %v", err)
 	}
 	time.Sleep(5 * time.Second) // Aguarda estabilização
+	fmt.Println(" Exporter iniciado com sucesso\n")
 
 	// Garante que o exporter será parado ao final, mesmo em caso de erro
 	defer func() {
+		fmt.Println("\n Encerrando exporter de métricas...")
 		stopCmd := exec.Command("docker", "compose", "down")
 		// Suprimir a saída de sucesso do 'down'
 		stopCmd.Stdout = nil
@@ -70,7 +74,7 @@ func main() {
 	}()
 
 	// 4. Executar o Benchmark (Hey)
-	fmt.Println("\n--- Executando o Gerador de Carga ---")
+	fmt.Println(" Executando Gerador de Carga...")
 	heyExecutor := heyexec.NewHeyExecutor(params)
 
 	// Executa o hey
@@ -80,7 +84,7 @@ func main() {
 	}
 
 	// 5. Coletar Métricas do Exporter
-	fmt.Println("\n--- Coletando Métricas do Prometheus ---")
+	fmt.Println("\n Coletando Métricas do Prometheus...")
 
 	// Cria o cliente para coletar as métricas do Prometheus do exporter
 	postProcessor := metrics.NewPostProcessor(ExporterURL)
@@ -92,18 +96,37 @@ func main() {
 	}
 
 	// 6. Pós-processamento e Consolidação
-	fmt.Println("\n--- Pós-processamento e Consolidação ---")
+	fmt.Println(" Processando e consolidando resultados...")
 
 	// Consolida os resultados do hey e as métricas coletadas
 	finalReportData := postProcessor.ConsolidateResults(allHeyResults, collectedMetrics, benchmarkStartTime)
 
-	// 7. Gerar Relatório
-	fmt.Println("\n--- Relatório Final ---")
-	reportGenerator := report.NewReportGenerator(finalReportData)
+	// 7. Exibir Resultados na Tela
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println("                      RELATÓRIO DE BENCHMARK FAASKUBEBENCH")
+	fmt.Println(strings.Repeat("=", 80))
 
-	reportPath := "benchmark_report.md"
-	if err := reportGenerator.Generate(reportPath); err != nil {
-		log.Fatalf("Erro ao gerar relatório: %v", err)
+	fmt.Println("\n MÉTRICAS DO GERADOR DE CARGA")
+	fmt.Println(strings.Repeat("-", 80))
+	fmt.Printf("   Requisições por Segundo (RPS):     %.2f req/s\n", finalReportData.RPS)
+	fmt.Printf("    Latência Média:                     %.4f s (%.2f ms)\n",
+		finalReportData.AvgLatency, finalReportData.AvgLatency*1000)
+	fmt.Printf("   Latência de Cauda (p99):            %.4f s (%.2f ms)\n",
+		finalReportData.P99Latency, finalReportData.P99Latency*1000)
+	fmt.Printf("   Total de Requisições:               %d\n", finalReportData.TotalRequests)
+	fmt.Printf("   Taxa de Erros HTTP (4xx/5xx):       %.2f%%\n", finalReportData.ErrorRate*100)
+	fmt.Printf("   Tráfego de Dados Total:             %.2f MB\n", float64(finalReportData.TotalData)/(1024*1024))
+
+	fmt.Println("\n  MÉTRICAS DE ORQUESTRAÇÃO")
+	fmt.Println(strings.Repeat("-", 80))
+	fmt.Printf("   Pods Escalados (Diferença):         %d\n", finalReportData.ScaledPodsDiff)
+	fmt.Printf("   Consumo de CPU (Cluster Total):     %.2f mCores\n", finalReportData.ClusterCPUUsage)
+	fmt.Printf("   Uso de Memória (Cluster Total):     %.2f MB\n", finalReportData.ClusterMemUsage/(1024*1024))
+	if finalReportData.TimeInicialization > 0 {
+		fmt.Printf("   Tempo de Inicialização: %s\n", finalReportData.TimeInicialization)
 	}
-	fmt.Printf("Relatório gerado com sucesso em: %s\n", reportPath)
+
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println(" Benchmark concluído com sucesso!")
+	fmt.Println(strings.Repeat("=", 80) + "\n")
 }

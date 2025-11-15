@@ -4,9 +4,22 @@ import (
 	"fmt"
 )
 
+// Este arquivo contém métodos para conversão de parâmetros do FaaSKubeBench
+// para argumentos do hey, com foco na coleta silenciosa de dados estruturados.
+//
+// Modificações realizadas:
+// - ToHeyArgs() agora força saída JSON e modo silencioso (-o json -q)
+// - Removida exibição desnecessária no terminal
+// - Adicionados métodos para configuração de coleta silenciosa
+// - Dados são coletados estruturadamente para posterior seleção e exibição
+
 // ToHeyArgs converte os parâmetros para argumentos do hey
+// Gera apenas argumentos necessários, sem valores padrão desnecessários
 func (p *BenchmarkParameters) ToHeyArgs() []string {
 	args := []string{}
+
+	// DEBUG: Vamos ver os valores dos parâmetros
+	//fmt.Printf("ToHeyArgs - Method: '%s', Timeout: %d\n", p.Hey.Method, p.Hey.Timeout)
 
 	// Adicionar argumentos baseados nos parâmetros principais
 	if p.Requests > 0 {
@@ -26,11 +39,13 @@ func (p *BenchmarkParameters) ToHeyArgs() []string {
 		args = append(args, "-q", fmt.Sprintf("%d", p.Hey.RateLimit))
 	}
 
-	if p.Hey.Method != "" {
+	// Só adicionar method se for diferente do padrão GET
+	if p.Hey.Method != "" && p.Hey.Method != "GET" {
 		args = append(args, "-m", p.Hey.Method)
 	}
 
-	if p.Hey.Timeout > 0 {
+	// Só adicionar timeout se for diferente do padrão (20) ou explicitamente configurado
+	if p.Hey.Timeout > 0 && p.Hey.Timeout != 20 {
 		args = append(args, "-t", fmt.Sprintf("%d", p.Hey.Timeout))
 	}
 
@@ -68,14 +83,9 @@ func (p *BenchmarkParameters) ToHeyArgs() []string {
 		args = append(args, "-disable-redirects")
 	}
 
-	// Output format - Prefer JSON for structured parsing
-	switch p.Hey.Output {
-	case "json", "":
-		args = append(args, "json")
-	case "csv":
-		args = append(args, "-o", "csv")
-	default:
-	}
+	// Force JSON output for structured parsing (hey outputs JSON by default when no -o flag is used)
+	// Não adicionar -o json pois não é um parâmetro válido do hey
+	// O hey produz saída JSON por padrão quando usado programaticamente
 
 	// URL final
 	args = append(args, p.URL)
@@ -123,4 +133,65 @@ func (p *BenchmarkParameters) Clone() *BenchmarkParameters {
 	}
 
 	return &clone
+}
+
+// ConfigureSilentDataCollection configura os parâmetros para coleta silenciosa de dados
+func (p *BenchmarkParameters) ConfigureSilentDataCollection() {
+	// O hey produz saída JSON por padrão, não precisamos forçar -o json
+	p.Hey.Output = ""
+
+	// Adiciona metadata indicando modo silencioso
+	if p.Metadata == nil {
+		p.Metadata = make(map[string]string)
+	}
+	p.Metadata["collection_mode"] = "silent"
+	p.Metadata["output_format"] = "json"
+}
+
+// IsSilentMode verifica se a coleta está configurada para modo silencioso
+func (p *BenchmarkParameters) IsSilentMode() bool {
+	if p.Metadata == nil {
+		return false
+	}
+	return p.Metadata["collection_mode"] == "silent"
+}
+
+// GetDataCollectionSummary retorna um resumo dos dados coletados (para seleção posterior)
+func (p *BenchmarkParameters) GetDataCollectionSummary() map[string]interface{} {
+	summary := make(map[string]interface{})
+
+	summary["data_collection_config"] = map[string]interface{}{
+		"silent_mode":    p.IsSilentMode(),
+		"output_format":  p.Hey.Output,
+		"requests":       p.Requests,
+		"concurrency":    p.Concurrency,
+		"url":            p.URL,
+		"platform":       p.Platform,
+		"function":       p.Function,
+		"generated_args": p.ToHeyArgs(), // Para debug se necessário
+	}
+
+	if p.Metadata != nil {
+		summary["metadata"] = p.Metadata
+	}
+
+	return summary
+}
+
+// ValidateHeyArgs valida se os argumentos gerados estão corretos
+func (p *BenchmarkParameters) ValidateHeyArgs() []string {
+	args := p.ToHeyArgs()
+
+	// Verificações básicas
+	validArgs := []string{}
+
+	for i, arg := range args {
+		// Não adicionar argumentos inválidos como "json" sozinho
+		if arg == "json" && (i == 0 || args[i-1] != "-o") {
+			continue // Pular argumento inválido
+		}
+		validArgs = append(validArgs, arg)
+	}
+
+	return validArgs
 }

@@ -1,0 +1,11 @@
+requests: 50
+concurrency: 10
+time: "60s"
+execution: 1
+platform: "knative"
+function: "matrix-multiplication"
+url: "http://autoscale-go.default.200.19.187.80.sslip.io"
+workload: "cpu"
+hey:
+  # Não definir method nem timeout para testar
+  cpus: 1

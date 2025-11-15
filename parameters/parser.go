@@ -25,8 +25,14 @@ func LoadParametersFromYAML(data []byte) (*BenchmarkParameters, error) {
 		return nil, fmt.Errorf("failed to parse YAML: %v", err)
 	}
 
+	// DEBUG: Valores antes dos defaults
+	//fmt.Printf("Antes ApplyDefaults - Method: '%s', Timeout: %d\n", parameters.Hey.Method, parameters.Hey.Timeout)
+
 	// Aplicar defaults
 	ApplyDefaults(&parameters)
+
+	// DEBUG: Valores depois dos defaults
+	//fmt.Printf("Depois ApplyDefaults - Method: '%s', Timeout: %d\n", parameters.Hey.Method, parameters.Hey.Timeout)
 
 	// Validar parâmetros
 	if err := ValidateParameters(&parameters); err != nil {

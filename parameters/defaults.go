@@ -9,9 +9,9 @@ func DefaultParameters() *BenchmarkParameters {
 		Platform:    "knative",
 		Workload:    "cpu",
 		Hey: HeyParameters{
-			Method:  "GET",
-			Timeout: 20,
-			CPUs:    1,
+			// Não definir Method e Timeout como padrão para evitar aparecer na linha de comando
+			// O hey usará seus próprios padrões (GET e timeout padrão)
+			CPUs: 1,
 		},
 	}
 }
@@ -40,13 +40,15 @@ func ApplyDefaults(parameters *BenchmarkParameters) {
 		parameters.Workload = defaults.Workload
 	}
 
-	if parameters.Hey.Method == "" {
-		parameters.Hey.Method = defaults.Hey.Method
-	}
+	// Não aplicar defaults para Method e Timeout
+	// Deixar o hey usar seus próprios valores padrão
+	// if parameters.Hey.Method == "" {
+	//     parameters.Hey.Method = defaults.Hey.Method
+	// }
 
-	if parameters.Hey.Timeout == 0 {
-		parameters.Hey.Timeout = defaults.Hey.Timeout
-	}
+	// if parameters.Hey.Timeout == 0 {
+	//     parameters.Hey.Timeout = defaults.Hey.Timeout
+	// }
 
 	if parameters.Hey.CPUs == 0 {
 		parameters.Hey.CPUs = defaults.Hey.CPUs

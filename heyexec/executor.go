@@ -28,9 +28,6 @@ func (e *HeyExecutor) Execute() (*RunResult, error) {
 	args := e.Parameters.ToHeyArgs()
 
 	startTime := time.Now()
-	fmt.Printf("Início do teste de carga: %s\n", startTime.Format(time.RFC3339))
-
-	fmt.Printf("Executando: hey %s\n", args)
 
 	cmd := exec.Command("hey", args...)
 
@@ -81,18 +78,18 @@ func (e *HeyExecutor) Execute() (*RunResult, error) {
 func (e *HeyExecutor) ExecuteMultiple() ([]*RunResult, error) {
 	allResults := []*RunResult{}
 	for i := 0; i < e.Parameters.Execution; i++ {
-		fmt.Printf("=== Execução %d de %d ===\n", i+1, e.Parameters.Execution)
+		fmt.Printf("  Execução %d/%d em andamento...\n", i+1, e.Parameters.Execution)
 
 		runResult, err := e.Execute()
 		allResults = append(allResults, runResult)
 
 		if err != nil {
-			fmt.Printf("Erro na execução %d: %v\n", i+1, err)
+			fmt.Printf("    Erro na execução %d: %v\n", i+1, err)
 			// Decide se quer parar ou continuar em caso de erro
 			// return allResults, err
+		} else {
+			fmt.Printf("   Execução %d/%d concluída\n", i+1, e.Parameters.Execution)
 		}
-
-		fmt.Printf("=== Fim da execução %d ===\n\n", i+1)
 	}
 
 	return allResults, nil
